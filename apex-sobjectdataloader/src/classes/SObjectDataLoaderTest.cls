@@ -51,7 +51,7 @@ private class SObjectDataLoaderTest {
         Database.rollback(savePoint);
         
         // Recreate test data via deserialize
-        Set<ID> resultIds = SObjectDataLoader.deserialize(serializedData, new ApplyStandardPricebook());
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData, new ApplyStandardPricebook());
         assertResults(resultIds);
     }
     
@@ -78,7 +78,7 @@ private class SObjectDataLoaderTest {
         Database.rollback(savePoint);
         
         // Recreate test data via deserialize
-        Set<ID> resultIds = SObjectDataLoader.deserialize(serializedData, new ApplyAccountRecord());
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData, new ApplyAccountRecord());
         List<Account> accList = [select Id, Name from Account];
         System.assertEquals(1,accList.size());
         System.assertEquals(accList[0].Name,'TestAccount1');
@@ -213,8 +213,11 @@ private class SObjectDataLoaderTest {
         return new Map<Id, Opportunity>(opps).keySet();         
     }
     
-    private static void assertResults(Set<ID> opportunityIds)
+    private static void assertResults(Map<Id, Id> idMap)
     {
+
+        Set<Id> opportunityIds = new Set<Id>(idMap.values());
+
         Pricebook2 standardPriceBook = [select Id from Pricebook2 where IsStandard = true];
         List<Opportunity> opportunities = 
             [select Id, Name, Amount, 
@@ -268,7 +271,7 @@ private class SObjectDataLoaderTest {
                 newAccountIds.add(myAccount.Id);
             }
             String serializedData = SObjectDataLoader.serialize(newAccountIds);
-            Set<Id> resultIds = SObjectDataLoader.deserialize(serializedData);
+            Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData);
             
             //dynamic soql will prevent any compile time errors if RecordTypeId field doesn't exist
             String accountsQuery = 'SELECT Id, RecordTypeId FROM Account WHERE Id IN :newAccountIds';
@@ -300,7 +303,7 @@ private class SObjectDataLoaderTest {
         delete recordsToDelete;
         Integer recordsAfterDeletion = [Select count() from Account];
         system.assertEquals(recordsBeforeDeletion,recordsAfterDeletion+2);
-        Set<Id> resultIds = SObjectDataLoader.deserialize(serializedData);
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData);
         List<Account> recordsAfterDeserialization =[Select Id,Name,ParentId from Account];
         system.assertEquals(recordsBeforeDeletion,recordsAfterDeserialization.size());
         Id parentRecordId;
@@ -353,7 +356,7 @@ private class SObjectDataLoaderTest {
         system.assertEquals(recordsBeforeDeletion,recordsAfterDeletion+3);
         
         //Importing Records
-        Set<Id> resultIds = SObjectDataLoader.deserialize(serializedData);
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData);
         List<Account> recordsAfterDeserialization =[Select Id,Name,ParentId from Account];
         system.assertEquals(recordsBeforeDeletion,recordsAfterDeserialization.size());
         //Verify Parent child Relationship is maintained between Account Objects
@@ -395,7 +398,7 @@ private class SObjectDataLoaderTest {
         system.assertEquals(recordsBeforeDeletion,recordsAfterDeletion+3);
         
         //Importing Records
-        Set<Id> resultIds = SObjectDataLoader.deserialize(serializedData);
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData);
         List<Account> recordsAfterDeserialization =[select a.ParentId, a.Id from Account a where a.ParentId  =null];
         system.assertEquals(recordsBeforeDeletion,recordsAfterDeserialization.size());
     }   
@@ -428,7 +431,7 @@ private class SObjectDataLoaderTest {
         system.assertEquals(opportunityRecordsAfterDeletion,0);
         
         //Importing Records
-        Set<Id> resultIds = SObjectDataLoader.deserialize(serializedData);
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(serializedData);
          Integer accountRecordsAfterImport = [Select count() from Account where Name like 'TestAccount'];
         system.assertEquals(accountRecordsAfterImport,1);
         Integer opportunityRecordsAfterImport = [Select count() from Opportunity where Name like 'TestOpportunity'];
@@ -455,7 +458,7 @@ private class SObjectDataLoaderTest {
         delete [Select Id from Contact where Name = 'MyContact'];
 
  		//Importing Records
-        Set<Id> resultIds = SObjectDataLoader.deserialize(testObjectJson);
+        Map<Id, Id> resultIds = SObjectDataLoader.deserialize(testObjectJson);
         List<Account> childAccountRecords = [select Id , ParentId from Account where Name like 'ChildAccount'];
         List<Account> parentAccountRecords = [select Id from Account where Name like 'Parent Account'];
         List<Contact> contactRecords = [select Id , AccountId from Contact where Name like 'MyContact'];
@@ -676,7 +679,7 @@ private class SObjectDataLoaderTest {
 		acc.put('ShippingCountry', 'defCountry');
         insert acc;
 		String serializedRecord = SObjectDataLoader.serialize(new Set<Id>{acc.Id}, new SObjectDataLoader.SerializeConfig().auto(acc.Id.getSObjectType()));
-		Set<Id> accIdSet = SObjectDataLoader.deserialize(serializedRecord);
+		Set<Id> accIdSet = new Set<Id>(SObjectDataLoader.deserialize(serializedRecord).values());
 		System.assertEquals(1, accIdSet.size());
 		List<Account> accList = [select Name, BillingCity, BillingCountry, BillingState, BillingStreet, ShippingCity, ShippingCountry from Account where Id in :accIdSet];
 		System.assertEquals(1,accList.size());
@@ -708,7 +711,7 @@ private class SObjectDataLoaderTest {
 		con.put('OtherState', 'defState');
         insert con;
 		String serializedRecord = SObjectDataLoader.serialize(new Set<Id>{con.Id}, new SObjectDataLoader.SerializeConfig().auto(con.Id.getSObjectType()));
-		Set<Id> conIdSet = SObjectDataLoader.deserialize(serializedRecord);
+		Set<Id> conIdSet = new Set<Id>(SObjectDataLoader.deserialize(serializedRecord).values());
 		System.assertEquals(1, conIdSet.size());
 		List<Contact> conList = [select LastName, MailingState, MailingCountry, MailingPostalCode, MailingStreet, MailingCity, OtherCity, OtherCountry, OtherPostalCode, OtherState from Contact where Id in :conIdSet];
 		System.assertEquals(1,conList.size());
@@ -739,7 +742,7 @@ private class SObjectDataLoaderTest {
 		testLead.put('PostalCode', '123456');
         insert testLead;
 		String serializedRecord = SObjectDataLoader.serialize(new Set<Id>{testLead.Id}, new SObjectDataLoader.SerializeConfig().auto(testLead.Id.getSObjectType()));
-		Set<Id> leadIdSet = SObjectDataLoader.deserialize(serializedRecord);
+		Set<Id> leadIdSet = new Set<Id>(SObjectDataLoader.deserialize(serializedRecord).values());
 		System.assertEquals(1, leadIdSet.size());
 		List<Lead> leadList = [select LastName, FirstName, Company, LeadSource, Street, City, Country, State, PostalCode from Lead where Id in :leadIdSet];
 		System.assertEquals(1,leadList.size());

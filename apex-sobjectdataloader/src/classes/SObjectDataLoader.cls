@@ -388,7 +388,7 @@ public with sharing class SObjectDataLoader
 	/**
 	 * Deserialize the given JSON record set bundle
 	 **/
-	public static Set<Id> deserialize(String recordsBundleAsJSON)
+	public static Map<Id, Id> deserialize(String recordsBundleAsJSON)
 	{
 		return deserialize(recordsBundleAsJSON, null);
 	}
@@ -396,7 +396,7 @@ public with sharing class SObjectDataLoader
 	/**
 	 * Deserialize the given JSON record set bundle utilising the given callback
 	 **/
-	public static Set<Id> deserialize(String recordsBundleAsJSON, IDeserializeCallback callback)
+	public static Map<Id, Id> deserialize(String recordsBundleAsJSON, IDeserializeCallback callback)
 	{
 		// Desearialise the records bundle
 		RecordsBundle recordsBundle = (RecordsBundle) 
@@ -533,8 +533,15 @@ public with sharing class SObjectDataLoader
         	}
         	insert unresolvedRecordsToInsert;
         }
+
+        Map<Id, Id> orginalNewIdMap = new Map<Id, Id>();
+        for (Id originalId : recordsByOriginalId.keySet()) {
+        	orginalNewIdMap.put(originalId, recordsByOriginalId.get(originalId).Id);
+        }
+
+        return orginalNewIdMap;
         // Return Id list from the first bundle set
-        return new Map<Id, SObject>(recordsBundle.recordSetBundles[0].Records).keySet();
+        //return new Map<Id, SObject>(recordsBundle.recordSetBundles[0].Records).keySet();
     }
 	
 	/*
